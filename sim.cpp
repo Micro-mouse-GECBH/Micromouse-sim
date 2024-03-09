@@ -11,5 +11,7 @@ void loop() {
 
   // to move forward/backward
   // move_forward(velocity)
-  
+
+  // to get sensor readings
+  // get_sensor_dist(sensor_index)
 }
