@@ -9,7 +9,7 @@ SFML
 ### Build command:
 
 ```
-g++ main.cpp -I ./headers -lsfml-graphics -lsfml-window -lsfml-system -o sim
+g++ main.cpp sim.cpp -I ./headers -lsfml-graphics -lsfml-window -lsfml-system -o sim
 ```
 
 ### Run:
