@@ -15,7 +15,7 @@ struct Vehicle {
   double dir;
   std::vector<Sensor> sensors;
 
-  std::vector<float> distance_readings(std::vector<Line> *walls) {
+  std::vector<float> distance_readings(std::vector<Line> *walls, int length) {
     auto vals = sensor_values(walls);
 
     std::vector<float> dists;
@@ -24,10 +24,23 @@ struct Vehicle {
       Vec2 sensor_pos = vecRotated(&sensors[i].pos, dir);
       sensor_pos = add(&sensor_pos, &pos);
       dists.push_back(distance(&sensor_pos, &vals[i]));
+    }
 
+    for (int i = vals.size(); i < length; i++) {
+      dists.push_back(-1.0);
     }
 
     return dists;
+  }
+
+  void move_forward(float speed) {
+    Vec2 vel = Vec2{0.0,-speed};
+    vel = vecRotated(&vel, dir);
+    pos = add(&pos, &vel);
+  }
+
+  void rotate(float aspeed) {
+    dir += aspeed;
   }
 
   std::vector<Vec2> sensor_values(std::vector<Line> *walls) {

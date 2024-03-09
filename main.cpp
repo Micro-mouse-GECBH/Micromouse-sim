@@ -5,8 +5,25 @@
 #include <SFML/Graphics/RectangleShape.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/Window/Keyboard.hpp>
+#include "headers/sim.h"
+#include "headers/sim_fns.h"
 #include <cmath>
 #include <iostream>
+
+Vehicle sim_v;
+std::vector<Line> walls;
+
+void rotate(float aspeed) {
+  sim_v.rotate(aspeed);
+}
+
+void move_forward(float speed) {
+  sim_v.move_forward(speed);
+}
+
+float get_sensor_dist(int idx) {
+  return sim_v.distance_readings(&walls, 3)[idx];
+}
 
 int main() {
   sf::RenderWindow window(sf::VideoMode(900, 900), "Micromouse sim");
@@ -15,16 +32,13 @@ int main() {
 
   window.setFramerateLimit(60);
 
-  Vehicle v;
 
-  v.dir = 0;
-  v.pos = Vec2{300.0, 200.0};
-  v.sensors = {Sensor{Vec2{10.0, 0.0}, 0.}};
-  v.sensors.push_back(Sensor{Vec2{-10.0, 0.0}, M_PI});
-  v.sensors.push_back(Sensor{Vec2{0.0, 35.0 / 2.0}, M_PI_2});
-  v.sensors.push_back(Sensor{Vec2{0.0, -35.0 / 2.0}, M_PI_2 + M_PI});
+  sim_v.dir = 0;
+  sim_v.pos = Vec2{300.0, 200.0};
+  sim_v.sensors = {Sensor{Vec2{10.0, 0.0}, 0.}};
+  sim_v.sensors.push_back(Sensor{Vec2{-10.0, 0.0}, M_PI});
+  sim_v.sensors.push_back(Sensor{Vec2{0.0, -35.0 / 2.0}, -M_PI_2});
 
-  std::vector<Line> walls;
 
   Maze maze(20, 20, 45);
 
@@ -42,6 +56,8 @@ int main() {
   }
 
 
+  setup();
+
   while (window.isOpen()) {
     sf::Event event;
     if (window.pollEvent(event)) {
@@ -52,22 +68,20 @@ int main() {
 
       if (event.type == sf::Event::KeyPressed) {
         if (event.key.code == sf::Keyboard::Key::Up) {
-          v.pos.x -= 5. * cos(v.dir + M_PI_2);
-          v.pos.y -= 5. * sin(v.dir + M_PI_2);
+          sim_v.move_forward(5.0);
         } else if (event.key.code == sf::Keyboard::Key::Down) {
-
-          v.pos.x += 5. * cos(v.dir + M_PI_2);
-          v.pos.y += 5. * sin(v.dir + M_PI_2);
+          sim_v.move_forward(-5.0);
         }
 
         else if (event.key.code == sf::Keyboard::Key::Left) {
-          v.dir -= 0.05;
-
+          sim_v.rotate(-0.05);
         } else if (event.key.code == sf::Keyboard::Key::Right) {
-          v.dir += 0.05;
+          sim_v.rotate(0.05);
         }
       }
     }
+
+    loop();
 
     window.clear(sf::Color::Black);
 
@@ -80,19 +94,19 @@ int main() {
 
     sf::RectangleShape vehicleShape(sf::Vector2f(20, 35));
     vehicleShape.setOrigin(10, 35.0 / 2.0);
-    vehicleShape.setPosition(v.pos.x, v.pos.y);
+    vehicleShape.setPosition(sim_v.pos.x, sim_v.pos.y);
     vehicleShape.setFillColor(sf::Color::Magenta);
 
-    vehicleShape.rotate(v.dir * 180 / M_PI);
+    vehicleShape.rotate(sim_v.dir * 180 / M_PI);
 
     sf::RectangleShape vehicleHead(sf::Vector2f(20, 5));
     vehicleHead.setOrigin(10, 35.0 / 2.0);
-    vehicleHead.setPosition(v.pos.x, v.pos.y);
+    vehicleHead.setPosition(sim_v.pos.x, sim_v.pos.y);
     vehicleHead.setFillColor(sf::Color::Yellow);
 
-    vehicleHead.rotate(v.dir * 180 / M_PI);
+    vehicleHead.rotate(sim_v.dir * 180 / M_PI);
 
-    auto sensorVals = v.sensor_values(&walls);
+    auto sensorVals = sim_v.sensor_values(&walls);
     
 
     for (auto val : sensorVals) {
@@ -102,13 +116,13 @@ int main() {
       window.draw(c);
     }
 
-    for (auto s : v.sensors) {
+    for (auto s : sim_v.sensors) {
 
-      auto basePos = vecRotated(&s.pos, v.dir);
-      basePos = add(&basePos, &v.pos);
+      auto basePos = vecRotated(&s.pos, sim_v.dir);
+      basePos = add(&basePos, &sim_v.pos);
 
       auto nextPos = Vec2{0., 200.0};
-      nextPos = vecWithHeading(&nextPos, v.dir + s.dir);
+      nextPos = vecWithHeading(&nextPos, sim_v.dir + s.dir);
       nextPos = add(&basePos, &nextPos);
 
       sf::VertexArray line(sf::LineStrip, 2);
@@ -125,8 +139,7 @@ int main() {
 
     maze.render(&window);
 
-    auto svals = v.distance_readings(&walls);
-    printf("sensors: %f %f %f %f \n", svals[0], svals[1], svals[2], svals[3]);
+    auto svals = sim_v.distance_readings(&walls, 3);
 
     window.display();
   }
