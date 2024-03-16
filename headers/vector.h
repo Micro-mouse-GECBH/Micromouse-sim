@@ -68,8 +68,10 @@ struct Vec2 {
     //  | sin A    cos A | | y |
     //  -               -  -  -
 
-    this->x = cosA * this->x - sinA * this->y;
-    this->y = sinA * this->x + cosA * this->y;
+    double x  = cosA * this->x - sinA * this->y;
+    double y  = sinA * this->x + cosA * this->y;
+    this->x = x;
+    this->y = y;
     return this;
   }
 

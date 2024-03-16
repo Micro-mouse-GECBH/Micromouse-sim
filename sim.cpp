@@ -65,6 +65,8 @@ std::vector<Vec2> points;
 
 Vec2 pos = Vec2(300.0, 200.0);
 Vec2 screen_center = Vec2(450, 450);
+
+float center_heading = -M_PI_2;
 float heading = 0.0;
 
 sf::RenderWindow window(sf::VideoMode(900, 900), "micromouse pov");
@@ -178,16 +180,16 @@ void draw() {
   if (e.type == sf::Event::KeyPressed) {
     switch (e.key.code) {
     case sf::Keyboard::Key::Up:
-      move_forward_pos(2.0);
+      move_forward_pos(4.0);
       break;
     case sf::Keyboard::Key::Down:
-      move_forward_pos(-2.0);
+      move_forward_pos(-4.0);
       break;
     case sf::Keyboard::Key::Right:
-      turn_heading(0.08);
+      turn_heading(0.1);
       break;
     case sf::Keyboard::Key::Left:
-      turn_heading(-0.08);
+      turn_heading(-0.1);
       break;
     default:
       break;
@@ -197,6 +199,7 @@ void draw() {
 
   for (auto pt : points) {
     Vec2 pt_pos = pt.subbed(&pos);
+    pt_pos.rotate(center_heading-heading);
     pt_pos.add(&screen_center);
 
     sf::CircleShape s(1);
@@ -206,15 +209,15 @@ void draw() {
   }
 
   sf::VertexArray vehicle( sf::TriangleStrip, 3);
-  Vec2 vehicle_p1 = Vec2(heading);
+  Vec2 vehicle_p1 = Vec2(center_heading);
   vehicle_p1.set_magnitude(20.0);
   vehicle_p1.add(&screen_center);
 
-  Vec2 vehicle_p2 = Vec2(heading + M_PI_2);
+  Vec2 vehicle_p2 = Vec2(center_heading + M_PI_2);
   vehicle_p2.set_magnitude(10.0);
   vehicle_p2.add(&screen_center);
 
-  Vec2 vehicle_p3 = Vec2(heading - M_PI_2);
+  Vec2 vehicle_p3 = Vec2(center_heading - M_PI_2);
   vehicle_p3.set_magnitude(10.0);
   vehicle_p3.add(&screen_center);
 
