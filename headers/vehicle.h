@@ -15,6 +15,9 @@ struct Vehicle {
   double dir;
   std::vector<Sensor> sensors;
 
+  Vehicle(): pos(Vec2(-1, -1)), dir(-1), sensors(std::vector<Sensor>()) {
+  }
+
   std::vector<float> distance_readings(std::vector<Line> *walls, int length) {
     auto vals = sensor_values(walls);
 
@@ -56,7 +59,7 @@ struct Vehicle {
 
       auto sensorLine = Line{sensorPt1, sensorPt2};
 
-      Vec2 sensorVal;
+      Vec2 sensorVal(-1, -1);
       double shortestDist = -1;
 
       for (auto wall : *walls) {

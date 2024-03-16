@@ -35,8 +35,8 @@ int main() {
 
   sim_v.dir = 0;
   sim_v.pos = Vec2{300.0, 200.0};
-  sim_v.sensors = {Sensor{Vec2{10.0, 0.0}, 0.}};
-  sim_v.sensors.push_back(Sensor{Vec2{-10.0, 0.0}, M_PI});
+  sim_v.sensors = {Sensor{Vec2{10.0, 0.0/2.0}, 0.}};
+  sim_v.sensors.push_back(Sensor{Vec2{-10.0, 0.0/2.0}, M_PI});
   sim_v.sensors.push_back(Sensor{Vec2{0.0, -35.0 / 2.0}, -M_PI_2});
 
 
@@ -85,12 +85,12 @@ int main() {
 
     window.clear(sf::Color::Black);
 
-    for (auto l : walls) {
-      sf::VertexArray line(sf::LineStrip, 2);
-      line[0].position = sf::Vector2f(l.p1.x, l.p1.y);
-      line[1].position = sf::Vector2f(l.p2.x, l.p2.y);
-      window.draw(line);
-    }
+    // for (auto l : walls) {
+    //   sf::VertexArray line(sf::LineStrip, 2);
+    //   line[0].position = sf::Vector2f(l.p1.x, l.p1.y);
+    //   line[1].position = sf::Vector2f(l.p2.x, l.p2.y);
+    //   window.draw(line);
+    // }
 
     sf::RectangleShape vehicleShape(sf::Vector2f(20, 35));
     vehicleShape.setOrigin(10, 35.0 / 2.0);
