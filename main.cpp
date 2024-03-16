@@ -67,17 +67,17 @@ int main() {
       }
 
       if (event.type == sf::Event::KeyPressed) {
-        if (event.key.code == sf::Keyboard::Key::Up) {
-          sim_v.move_forward(5.0);
-        } else if (event.key.code == sf::Keyboard::Key::Down) {
-          sim_v.move_forward(-5.0);
-        }
-
-        else if (event.key.code == sf::Keyboard::Key::Left) {
-          sim_v.rotate(-0.05);
-        } else if (event.key.code == sf::Keyboard::Key::Right) {
-          sim_v.rotate(0.05);
-        }
+        // if (event.key.code == sf::Keyboard::Key::Up) {
+        //   sim_v.move_forward(5.0);
+        // } else if (event.key.code == sf::Keyboard::Key::Down) {
+        //   sim_v.move_forward(-5.0);
+        // }
+        //
+        // else if (event.key.code == sf::Keyboard::Key::Left) {
+        //   sim_v.rotate(-0.05);
+        // } else if (event.key.code == sf::Keyboard::Key::Right) {
+        //   sim_v.rotate(0.05);
+        // }
       }
     }
 

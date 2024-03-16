@@ -64,6 +64,7 @@ std::vector<int> open_sensors;
 std::vector<Vec2> points;
 
 Vec2 pos = Vec2(300.0, 200.0);
+Vec2 screen_center = Vec2(450, 450);
 float heading = 0.0;
 
 sf::RenderWindow window(sf::VideoMode(900, 900), "micromouse pov");
@@ -195,8 +196,11 @@ void draw() {
 
 
   for (auto pt : points) {
+    Vec2 pt_pos = pt.subbed(&pos);
+    pt_pos.add(&screen_center);
+
     sf::CircleShape s(1);
-    s.setPosition(pt.x, pt.y);
+    s.setPosition(pt_pos.x, pt_pos.y);
     s.setFillColor(sf::Color::Green);
     window.draw(s);
   }
@@ -204,15 +208,15 @@ void draw() {
   sf::VertexArray vehicle( sf::TriangleStrip, 3);
   Vec2 vehicle_p1 = Vec2(heading);
   vehicle_p1.set_magnitude(20.0);
-  vehicle_p1.add(&pos);
+  vehicle_p1.add(&screen_center);
 
   Vec2 vehicle_p2 = Vec2(heading + M_PI_2);
   vehicle_p2.set_magnitude(10.0);
-  vehicle_p2.add(&pos);
+  vehicle_p2.add(&screen_center);
 
   Vec2 vehicle_p3 = Vec2(heading - M_PI_2);
   vehicle_p3.set_magnitude(10.0);
-  vehicle_p3.add(&pos);
+  vehicle_p3.add(&screen_center);
 
 
   vehicle[0].position = sf::Vector2f(vehicle_p1.x, vehicle_p1.y);
