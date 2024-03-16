@@ -208,6 +208,30 @@ void draw() {
     window.draw(s);
   }
 
+
+  Vec2 compass_pos = Vec2(900-50, 50);
+  sf::VertexArray compass( sf::TriangleStrip, 3);
+  Vec2 compass_p1 = Vec2(center_heading - heading);
+  compass_p1.set_magnitude(40.0);
+  compass_p1.add(&compass_pos);
+
+  Vec2 compass_p2 = Vec2(center_heading - heading + M_PI_2);
+  compass_p2.set_magnitude(10.0);
+  compass_p2.add(&compass_pos);
+
+  Vec2 compass_p3 = Vec2(center_heading - heading - M_PI_2);
+  compass_p3.set_magnitude(10.0);
+  compass_p3.add(&compass_pos);
+
+  compass[0].position = sf::Vector2f(compass_p1.x, compass_p1.y);
+  compass[0].color = sf::Color::Cyan;
+  compass[1].position = sf::Vector2f(compass_p2.x, compass_p2.y);
+  compass[1].color = sf::Color::Cyan;
+  compass[2].position = sf::Vector2f(compass_p3.x, compass_p3.y);
+  compass[2].color = sf::Color::Cyan;
+
+  window.draw(compass);
+
   sf::VertexArray vehicle( sf::TriangleStrip, 3);
   Vec2 vehicle_p1 = Vec2(center_heading);
   vehicle_p1.set_magnitude(20.0);
