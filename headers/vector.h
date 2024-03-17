@@ -13,14 +13,14 @@ struct Vec2 {
     this->y = sin(dir);
   }
 
-  Vec2* normalize() {
+  Vec2 *normalize() {
     double mag = this->magnitude();
     this->x /= mag;
     this->y /= mag;
     return this;
   }
 
-  Vec2* set_magnitude(double mag) {
+  Vec2 *set_magnitude(double mag) {
     this->normalize();
     this->x *= mag;
     this->y *= mag;
@@ -34,19 +34,21 @@ struct Vec2 {
     return u;
   }
 
-  Vec2* add(Vec2* other) {
+  Vec2 *add(Vec2 *other) {
     this->x += other->x;
     this->y += other->y;
     return this;
   }
 
-  Vec2* sub(Vec2* other) {
+  Vec2 *sub(Vec2 *other) {
     this->x -= other->x;
     this->y -= other->y;
     return this;
   }
 
-  Vec2* set_heading(double dir) {
+  double dot(Vec2 *other) { return this->x * other->x + this->y * other->y; }
+
+  Vec2 *set_heading(double dir) {
     double mag = this->magnitude();
     this->x = mag * cos(dir);
     this->y = mag * sin(dir);
@@ -58,7 +60,7 @@ struct Vec2 {
     return Vec2(mag * cos(dir), mag * sin(dir));
   }
 
-  Vec2* rotate(float dir) {
+  Vec2 *rotate(float dir) {
 
     double cosA = cos(dir);
     double sinA = sin(dir);
@@ -68,16 +70,20 @@ struct Vec2 {
     //  | sin A    cos A | | y |
     //  -               -  -  -
 
-    double x  = cosA * this->x - sinA * this->y;
-    double y  = sinA * this->x + cosA * this->y;
+    double x = cosA * this->x - sinA * this->y;
+    double y = sinA * this->x + cosA * this->y;
     this->x = x;
     this->y = y;
     return this;
   }
 
-  Vec2 added(Vec2 *other) { return Vec2(this->x + other->x, this->y + other->y); }
+  Vec2 added(Vec2 *other) {
+    return Vec2(this->x + other->x, this->y + other->y);
+  }
 
-  Vec2 subbed(Vec2 *other) { return Vec2(this->x - other->x, this->y - other->y); }
+  Vec2 subbed(Vec2 *other) {
+    return Vec2(this->x - other->x, this->y - other->y);
+  }
 
   Vec2 rotated(float dir) {
     double cosA = cos(dir);
@@ -93,22 +99,18 @@ struct Vec2 {
     return Vec2(x, y);
   }
 
-  double distance(Vec2* other) {
+  double distance(Vec2 *other) {
     return sqrt(pow(this->x - other->x, 2.0) + pow(this->y - other->y, 2.0));
   }
 
-  double magnitude() {
-    return sqrt(pow(this->x, 2.0) + pow(this->y, 2.0));
-  }
+  double magnitude() { return sqrt(pow(this->x, 2.0) + pow(this->y, 2.0)); }
 
   Vec2 normalized() {
     double mag = this->magnitude();
-    return Vec2(this->x/mag, this->y/mag);
+    return Vec2(this->x / mag, this->y / mag);
   }
 
-  double direction() {
-    return std::atan2(this->y, this->x);
-  }
+  double direction() { return std::atan2(this->y, this->x); }
 };
 
 struct Line {

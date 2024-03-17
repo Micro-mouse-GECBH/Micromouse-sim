@@ -46,6 +46,14 @@ enum State {
   LeftTurn,
 };
 
+enum TurnStage {
+  ToCenter,
+  Turn,
+  ExitTurn,
+};
+
+TurnStage turn_stage = ToCenter;
+
 namespace exit_mode {
 enum ExitMode {
   LeftTurn,
@@ -54,14 +62,27 @@ enum ExitMode {
 };
 }
 
+struct Window {
+  Vec2 left_p;
+  Vec2 right_p;
+
+  Window(Vec2 lp, Vec2 rp) : left_p(lp), right_p(rp) {}
+};
+
 exit_mode::ExitMode exit_substate;
-State s = Stop;
+State s = MoveFwd;
+
+Vec2 sensor_dx(0., 0.);
+Window exit_marker = Window(Vec2(-1, -1), Vec2(-1, -1));
 
 float turn = 0.0;
 float dl = 0.0;
 
 std::vector<int> open_sensors;
 std::vector<Vec2> points;
+
+Window prev_sensors = Window(Vec2(-1, -1), Vec2(-1, -1));
+Vec2 prev_dists = Vec2(-1, -1);
 
 Vec2 pos = Vec2(300.0, 200.0);
 Vec2 screen_center = Vec2(450, 450);
@@ -83,7 +104,8 @@ void move_forward_pos(float rate) {
   move_forward(rate);
 }
 
-void add_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
+Vec2 get_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
+
   s_rel_pos.set_heading(heading + s_heading);
 
   auto s_pos = s_rel_pos.added(&pos);
@@ -93,6 +115,11 @@ void add_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
 
   auto detection_pos = s_pos.added(&detection_dir);
 
+  return detection_pos;
+}
+
+void add_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
+  auto detection_pos = get_sensor_point(s_rel_pos, s_heading, dist);
   points.push_back(detection_pos);
 }
 
@@ -113,10 +140,7 @@ void add_sensor_points() {
   // points.push_back(detection_pos);
 }
 
-void setup() {
-  window.clear(sf::Color::Black);
-
-}
+void setup() { window.clear(sf::Color::Black); }
 
 void print_state() {
   switch (s) {
@@ -160,6 +184,8 @@ void left_turn() {
   }
 }
 
+bool received_key = false;
+
 void update_open_sensors() {
 
   open_sensors.clear();
@@ -180,6 +206,7 @@ void draw() {
   if (e.type == sf::Event::KeyPressed) {
     switch (e.key.code) {
     case sf::Keyboard::Key::Up:
+      received_key = true;
       move_forward_pos(4.0);
       break;
     case sf::Keyboard::Key::Down:
@@ -196,10 +223,9 @@ void draw() {
     }
   }
 
-
   for (auto pt : points) {
     Vec2 pt_pos = pt.subbed(&pos);
-    pt_pos.rotate(center_heading-heading);
+    pt_pos.rotate(center_heading - heading);
     pt_pos.add(&screen_center);
 
     sf::CircleShape s(1);
@@ -208,9 +234,8 @@ void draw() {
     window.draw(s);
   }
 
-
-  Vec2 compass_pos = Vec2(900-50, 50);
-  sf::VertexArray compass( sf::TriangleStrip, 3);
+  Vec2 compass_pos = Vec2(900 - 50, 50);
+  sf::VertexArray compass(sf::TriangleStrip, 3);
   Vec2 compass_p1 = Vec2(center_heading - heading);
   compass_p1.set_magnitude(40.0);
   compass_p1.add(&compass_pos);
@@ -232,7 +257,7 @@ void draw() {
 
   window.draw(compass);
 
-  sf::VertexArray vehicle( sf::TriangleStrip, 3);
+  sf::VertexArray vehicle(sf::TriangleStrip, 3);
   Vec2 vehicle_p1 = Vec2(center_heading);
   vehicle_p1.set_magnitude(20.0);
   vehicle_p1.add(&screen_center);
@@ -245,114 +270,207 @@ void draw() {
   vehicle_p3.set_magnitude(10.0);
   vehicle_p3.add(&screen_center);
 
-
   vehicle[0].position = sf::Vector2f(vehicle_p1.x, vehicle_p1.y);
   vehicle[1].position = sf::Vector2f(vehicle_p2.x, vehicle_p2.y);
   vehicle[2].position = sf::Vector2f(vehicle_p3.x, vehicle_p3.y);
 
+  sf::CircleShape marker1(4.0);
+
+  Vec2 m1p1 = exit_marker.left_p.subbed(&pos);
+  m1p1.rotate(center_heading - heading);
+  m1p1.add(&screen_center);
+
+  Vec2 m1p2 = exit_marker.right_p.subbed(&pos);
+  m1p2.rotate(center_heading - heading);
+  m1p2.add(&screen_center);
+
+  marker1.setFillColor(sf::Color::Magenta);
+  marker1.setPosition(m1p1.x, m1p1.y);
+  window.draw(marker1);
+
+  marker1.setPosition(m1p2.x, m1p2.y);
+  window.draw(marker1);
+
   window.draw(vehicle);
 
-
   window.display();
+}
+
+void set_marker() {
+  Vec2 left_u = Vec2(heading - M_PI_2);
+  Vec2 right_u = Vec2(heading + M_PI_2);
+
+  double nearest_l = -1;
+  double nearest_r = -1;
+
+  Vec2 nearest_l_pt(-1,-1);
+  Vec2 nearest_r_pt(-1, -1);
+
+  for (Vec2 pt: points) {
+    Vec2 dr = pt.subbed(&pos);
+    Vec2 dru = dr.normalized();
+    double weighted_dist_l = dr.magnitude() / ( dru.dot(&left_u));
+    double weighted_dist_r = dr.magnitude() / ( dru.dot(&right_u));
+
+
+    if ((weighted_dist_l > 0 && weighted_dist_l < nearest_l) || nearest_l < 0) {
+      nearest_l = weighted_dist_l;
+      nearest_l_pt = pt;
+    }
+    if ((weighted_dist_r > 0 && weighted_dist_r < nearest_r) || nearest_r < 0) {
+      nearest_r = weighted_dist_r;
+      nearest_r_pt = pt;
+    }
+  }
+
+  exit_marker = Window(nearest_l_pt, nearest_r_pt);
 }
 
 void loop() {
   draw();
   add_sensor_points();
 
-  // if (s == MoveFwd) {
-  //   turn = 0.0;
-  //   if (get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
-  //     s = Stop;
-  //   }
-  //
-  //
-  //   update_open_sensors();
-  //
-  //   if (open_sensors.size() > 1) {
-  //     //junction
-  //     s = ArrivedAtJn;
-  //
-  //
-  //
-  //   } else {
-  //     //turn
-  //     if (get_sensor_dist(RIGHT_SENSOR) > THRESH_UPPER) {
-  //       s = RightTurn;
-  //     }
-  //
-  //     if (get_sensor_dist(LEFT_SENSOR) > THRESH_UPPER) {
-  //       s = LeftTurn;
-  //     }
-  //   }
-  // }
-  //
-  // printf("%f %f ", get_sensor_dist(RIGHT_SENSOR),
-  // get_sensor_dist(LEFT_SENSOR)); print_state(); printf("\n");
-  //
-  // if ( s == RightTurn ) {
-  //   right_turn();
-  //   if (turn >= 3.14/2) {
-  //     s = MoveFwd;
-  //   }
-  // }
-  //
-  // if ( s == LeftTurn ) {
-  //   left_turn();
-  //   if (turn >= 3.14/2) {
-  //     s = MoveFwd;
-  //   }
-  // }
-  //
-  // if ( s == ArrivedAtJn ) {
-  //     int chosen_dir = open_sensors[random() % open_sensors.size()];
-  //     switch (chosen_dir) {
-  //       case RIGHT_SENSOR:
-  //         exit_substate = exit_mode::ExitMode::RightTurn;
-  //         break;
-  //     case LEFT_SENSOR:
-  //         exit_substate = exit_mode::ExitMode::LeftTurn;
-  //         break;
-  //     case FWD_SENSOR:
-  //         exit_substate = exit_mode::ExitMode::Fwd;
-  //         break;
-  //   }
-  //   s = JnExit;
-  //   dl = 0.0;
-  //   turn = 0.0;
-  // }
-  //
-  // if ( s== JnExit) {
-  //   switch (exit_substate) {
-  //     case exit_mode::LeftTurn:
-  //       left_turn();
-  //       if (turn >= 3.14/2) {
-  //         exit_substate = exit_mode::Fwd;
-  //       }
-  //       break;
-  //
-  //     case exit_mode::RightTurn:
-  //       right_turn();
-  //       if (turn >= 3.14/2) {
-  //         exit_substate = exit_mode::Fwd;
-  //       }
-  //       break;
-  //
-  //     case exit_mode::Fwd:
-  //       dl += 0.4;
-  //       move_forward(0.4);
-  //       if (dl < 4.0) {
-  //          break;
-  //       }
-  //       if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL ||
-  //       get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL ||
-  //       get_sensor_dist(FWD_SENSOR) < THRESH_WALL) {
-  //         s = MoveFwd;
-  //       }
-  //   }
-  // }
-  //
-  // if (s==MoveFwd) {
-  //   move_forward(0.4);
-  // }
+
+  auto lsp = prev_sensors.left_p;
+  if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
+    auto lsp1 = get_sensor_point(Vec2(-10, 0), -M_PI_2, get_sensor_dist(LEFT_SENSOR));
+    if (lsp1.distance(&pos) < lsp.distance(&pos)) {
+      lsp = lsp1;
+    }
+  }
+  auto rsp = prev_sensors.right_p;
+  if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL) {
+    auto rsp1 = get_sensor_point(Vec2(10, 0), M_PI_2, get_sensor_dist(RIGHT_SENSOR));
+    if (rsp1.distance(&pos) < rsp.distance(&pos)) {
+      rsp = rsp1;
+    }
+  }
+  auto window = Window(lsp, rsp);
+  prev_sensors = window;
+  if (prev_dists.x > -1) {
+    sensor_dx = Vec2(get_sensor_dist(LEFT_SENSOR) - prev_dists.x, get_sensor_dist(RIGHT_SENSOR)-prev_dists.y);
+  } 
+  prev_dists = Vec2(get_sensor_dist(LEFT_SENSOR), get_sensor_dist(RIGHT_SENSOR));
+
+
+
+  if (s == MoveFwd) {
+    if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL && get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
+      // auto lsp =
+      //     get_sensor_point(Vec2(-10, 0), -M_PI_2, get_sensor_dist(LEFT_SENSOR));
+      // auto rsp =
+      //     get_sensor_point(Vec2(10, 0), M_PI_2, get_sensor_dist(RIGHT_SENSOR));
+      // printf("[%f %f\n", lsp.x, lsp.y);
+      // printf("%f %f]\n", rsp.x, rsp.y);
+      // auto window = Window(lsp, rsp);
+      // prev_sensors = window;
+      if (sensor_dx.y > 0.0) {
+        turn_heading(0.03);
+      } else if (sensor_dx.y < 0.0) {
+        turn_heading(-0.03);
+      }
+      move_forward_pos(1.2);
+    } else if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL) {
+      received_key = false;
+      set_marker();
+      // exit_marker = prev_sensors;
+
+      s = RightTurn;
+      turn_stage = ToCenter;
+      turn = heading;
+    } else if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL) {
+
+      received_key = false;
+      set_marker();
+      s = LeftTurn;
+      turn_stage = ToCenter;
+      turn = heading;
+    }
+  }
+
+  if (s == RightTurn && received_key) {
+
+    if (turn_stage == ToCenter) {
+      auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
+      auto window_uvec = window_vec.normalized();
+      auto delta_pos = pos.subbed(&exit_marker.right_p);
+      auto fwd_vec = window_uvec.rotated(-M_PI_2);
+
+      double fwd_dist = abs(fwd_vec.dot(&delta_pos));
+      // printf("here\n");
+      // printf("%f %f \n", pos.x, pos.y);
+      // printf("fwd %f, %f %f, %f %f\n", fwd_dist, pos.x, pos.y,
+      // exit_marker.left_p.x, exit_marker.left_p.y); printf("dir vec %f, %f\n",
+      // fwd_vec.x, fwd_vec.y); while(true){}
+      if (fwd_dist > THRESH_WALL / 2.0) {
+        turn = heading;
+        turn_stage = Turn;
+      } else {
+        move_forward_pos(1.2);
+      }
+
+    } else if (turn_stage == Turn) {
+      if (abs(heading - turn) < M_PI_2) {
+        turn_heading(0.08);
+      } else {
+        turn_stage = ExitTurn;
+      }
+    } else {
+      auto window_vec = exit_marker.right_p.subbed(&exit_marker.left_p);
+      auto window_uvec = window_vec.normalized();
+      auto delta_pos = pos.subbed(&exit_marker.right_p);
+
+      double normal_dist_travelled = window_uvec.dot(&delta_pos);
+
+      printf("n %f\n", normal_dist_travelled);
+      if (normal_dist_travelled > THRESH_WALL / 3.0) {
+        s = MoveFwd;
+      } else {
+        move_forward_pos(1.2);
+      }
+    }
+  }
+  if (s == LeftTurn && received_key) {
+
+    if (turn_stage == ToCenter) {
+      auto window_vec = exit_marker.right_p.subbed(&exit_marker.left_p);
+      auto window_uvec = window_vec.normalized();
+      auto delta_pos = pos.subbed(&exit_marker.left_p);
+      auto fwd_vec = window_uvec.rotated(M_PI_2);
+
+      double fwd_dist = abs(fwd_vec.dot(&delta_pos));
+      // printf("here\n");
+      // printf("%f %f \n", pos.x, pos.y);
+      // printf("fwd %f, %f %f, %f %f\n", fwd_dist, pos.x, pos.y,
+      // exit_marker.left_p.x, exit_marker.left_p.y); printf("dir vec %f, %f\n",
+      // fwd_vec.x, fwd_vec.y); while(true){}
+      printf("fwd dist: %f\n", fwd_dist);
+      if (fwd_dist > THRESH_WALL / 2.0) {
+        turn = heading;
+        turn_stage = Turn;
+      } else {
+        move_forward_pos(1.2);
+      }
+
+    } else if (turn_stage == Turn) {
+      if (abs(heading - turn) < M_PI_2) {
+        turn_heading(-0.08);
+      } else {
+        turn_stage = ExitTurn;
+      }
+    } else {
+      auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
+      auto window_uvec = window_vec.normalized();
+      auto delta_pos = pos.subbed(&exit_marker.left_p);
+
+      double normal_dist_travelled = window_uvec.dot(&delta_pos);
+
+      printf("here %f\n", normal_dist_travelled);
+      if (normal_dist_travelled > THRESH_WALL / 3.0) {
+        s = MoveFwd;
+      } else {
+        move_forward_pos(1.2);
+      }
+    }
+  }
 }
