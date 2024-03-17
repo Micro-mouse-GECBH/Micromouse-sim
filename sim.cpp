@@ -20,12 +20,12 @@
 
 #define THRESH_LOWER 10.0
 #define THRESH_UPPER 10.0
-#define THRESH_WALL 25.0
+#define THRESH_WALL 24.0
 
 #define TURN_RATE 0.03
 #define TURN_SPEED 1.0
 
-#define FAST_TURN_RATE 0.1
+#define FAST_TURN_RATE 0.08
 #define SLOW_TURN_RATE 0.03
 
 #define FAST_SPEED 3.0
@@ -50,7 +50,8 @@ enum State {
   JnExit,
   RightTurn,
   LeftTurn,
-  TurnAround
+  TurnAround,
+  FwdExit,
 };
 
 enum TurnStage {
@@ -169,8 +170,14 @@ void print_state() {
   case Stop:
     printf("Stop");
     break;
+  case FwdExit:
+    printf("FwdExit");
+    break;
+  case TurnAround:
+    printf("TurnAround");
   }
 }
+
 
 void right_turn() {
 
@@ -191,17 +198,17 @@ void left_turn() {
   }
 }
 
-bool received_key = false;
+bool received_key = true;
 
 void update_open_sensors() {
 
   open_sensors.clear();
 
-  if (get_sensor_dist(RIGHT_SENSOR) > THRESH_UPPER)
+  if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL)
     open_sensors.push_back(RIGHT_SENSOR);
-  if (get_sensor_dist(LEFT_SENSOR) > THRESH_UPPER)
+  if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL)
     open_sensors.push_back(LEFT_SENSOR);
-  if (get_sensor_dist(FWD_SENSOR) > THRESH_UPPER)
+  if (get_sensor_dist(FWD_SENSOR) > THRESH_WALL)
     open_sensors.push_back(FWD_SENSOR);
 }
 
@@ -377,25 +384,42 @@ void loop() {
         turn_heading(-SLOW_TURN_RATE);
       }
       move_forward_pos(FAST_SPEED);
-    } else if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL) {
-      // received_key = false;
-      set_marker();
-      // exit_marker = prev_sensors;
-
-      s = RightTurn;
-      turn_stage = ToCenter;
-      turn = heading;
-    } else if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL) {
-
-      // received_key = false;
-      set_marker();
-      s = LeftTurn;
-      turn_stage = ToCenter;
-      turn = heading;
+    // } else if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL) {
+    //   // received_key = false;
+    //   set_marker();
+    //   // exit_marker = prev_sensors;
+    //
+    //   s = RightTurn;
+    //   turn_stage = ToCenter;
+    //   turn = heading;
+    // } else if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL) {
+    //
+    //   // received_key = false;
+    //   set_marker();
+    //   s = LeftTurn;
+    //   turn_stage = ToCenter;
+    //   turn = heading;
     } else {
       //turn around
-      s = TurnAround;
-      turn = heading;
+      update_open_sensors();
+
+
+      if (open_sensors.size() <= 0) {
+        s = TurnAround;
+        turn = heading;
+      }
+      else {
+        int dir_pick = open_sensors[rand() % open_sensors.size()];
+          set_marker();
+          turn_stage = ToCenter;
+          turn = heading;
+
+        // if (dir_pick == FWD_SENSOR) TODO: Implement FwdExit properly
+        if (dir_pick == LEFT_SENSOR) s = LeftTurn;
+        else if (dir_pick == RIGHT_SENSOR) s = RightTurn;
+
+
+      }
 
     }
   }
@@ -453,6 +477,33 @@ void loop() {
       }
     }
   }
+
+  if (s == FwdExit && received_key) {
+    auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
+    auto window_uvec = window_vec.normalized();
+    window_uvec.rotate(M_PI_2);
+    auto delta_pos = pos.subbed(&exit_marker.left_p);
+
+    hit_left_wall = false;
+    hit_right_wall = false;
+
+    if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
+      hit_left_wall = true;
+    }
+    if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL) {
+      hit_right_wall = true;
+    }
+
+    double dist_straight = window_uvec.dot(&delta_pos);
+
+    if (dist_straight > THRESH_WALL || (hit_left_wall && hit_right_wall)) {
+      s = MoveFwd;
+    } else {
+
+      move_forward_pos(FAST_SPEED);
+    }
+  }
+
   if (s == LeftTurn && received_key) {
 
     if (turn_stage == ToCenter) {
