@@ -20,17 +20,20 @@
 
 #define THRESH_LOWER 10.0
 #define THRESH_UPPER 10.0
-#define THRESH_WALL 24.0
+#define THRESH_WALL 25.0
+
+#define FRONT_WALL_THRESH 45.0
 
 #define TURN_RATE 0.03
 #define TURN_SPEED 1.0
 
-#define FAST_TURN_RATE 0.08
+#define FAST_TURN_RATE 0.05
 #define SLOW_TURN_RATE 0.03
 
-#define FAST_SPEED 3.0
+#define FAST_SPEED 2.5
 #define SLOW_SPEED 1.0
 
+int next_dir = -1;
 // to change heading
 //  rotate(angular_velocity)
 
@@ -129,6 +132,19 @@ Vec2 get_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
 void add_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
   auto detection_pos = get_sensor_point(s_rel_pos, s_heading, dist);
   points.push_back(detection_pos);
+
+
+  if (points.size() > 20000) {
+    int pt_size = points.size();
+    auto points_new = std::vector<Vec2>();
+
+    for (int i = 99999; i < pt_size; i++) {
+      points_new.push_back(points[i]);
+
+    }
+    points = points_new;
+  }
+  
 }
 
 void add_sensor_points() {
@@ -178,7 +194,6 @@ void print_state() {
   }
 }
 
-
 void right_turn() {
 
   if (get_sensor_dist(RIGHT_SENSOR) > THRESH_UPPER) {
@@ -204,11 +219,11 @@ void update_open_sensors() {
 
   open_sensors.clear();
 
-  if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL)
+  if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL )
     open_sensors.push_back(RIGHT_SENSOR);
-  if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL)
+  if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL )
     open_sensors.push_back(LEFT_SENSOR);
-  if (get_sensor_dist(FWD_SENSOR) > THRESH_WALL)
+  if (get_sensor_dist(FWD_SENSOR) > FRONT_WALL_THRESH+10.0)
     open_sensors.push_back(FWD_SENSOR);
 }
 
@@ -220,17 +235,16 @@ void draw() {
   if (e.type == sf::Event::KeyPressed) {
     switch (e.key.code) {
     case sf::Keyboard::Key::Up:
-      received_key = true;
-      move_forward_pos(4.0);
+      next_dir = FWD_SENSOR;
       break;
     case sf::Keyboard::Key::Down:
       move_forward_pos(-4.0);
       break;
     case sf::Keyboard::Key::Right:
-      turn_heading(0.1);
+      next_dir = RIGHT_SENSOR;
       break;
     case sf::Keyboard::Key::Left:
-      turn_heading(-0.1);
+        next_dir = LEFT_SENSOR;
       break;
     default:
       break;
@@ -317,15 +331,14 @@ void set_marker() {
   double nearest_l = -1;
   double nearest_r = -1;
 
-  Vec2 nearest_l_pt(-1,-1);
+  Vec2 nearest_l_pt(-1, -1);
   Vec2 nearest_r_pt(-1, -1);
 
-  for (Vec2 pt: points) {
+  for (Vec2 pt : points) {
     Vec2 dr = pt.subbed(&pos);
     Vec2 dru = dr.normalized();
-    double weighted_dist_l = dr.magnitude() / ( dru.dot(&left_u));
-    double weighted_dist_r = dr.magnitude() / ( dru.dot(&right_u));
-
+    double weighted_dist_l = dr.magnitude() / (dru.dot(&left_u));
+    double weighted_dist_r = dr.magnitude() / (dru.dot(&right_u));
 
     if ((weighted_dist_l > 0 && weighted_dist_l < nearest_l) || nearest_l < 0) {
       nearest_l = weighted_dist_l;
@@ -340,6 +353,7 @@ void set_marker() {
   exit_marker = Window(nearest_l_pt, nearest_r_pt);
 }
 
+
 bool hit_left_wall = false;
 bool hit_right_wall = false;
 
@@ -350,17 +364,18 @@ void loop() {
   print_state();
   printf("\n");
 
-
   auto lsp = prev_sensors.left_p;
   if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
-    auto lsp1 = get_sensor_point(Vec2(-10, 0), -M_PI_2, get_sensor_dist(LEFT_SENSOR));
+    auto lsp1 =
+        get_sensor_point(Vec2(-10, 0), -M_PI_2, get_sensor_dist(LEFT_SENSOR));
     if (lsp1.distance(&pos) < lsp.distance(&pos)) {
       lsp = lsp1;
     }
   }
   auto rsp = prev_sensors.right_p;
   if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL) {
-    auto rsp1 = get_sensor_point(Vec2(10, 0), M_PI_2, get_sensor_dist(RIGHT_SENSOR));
+    auto rsp1 =
+        get_sensor_point(Vec2(10, 0), M_PI_2, get_sensor_dist(RIGHT_SENSOR));
     if (rsp1.distance(&pos) < rsp.distance(&pos)) {
       rsp = rsp1;
     }
@@ -368,59 +383,63 @@ void loop() {
   auto window = Window(lsp, rsp);
   prev_sensors = window;
   if (prev_dists.x > -1) {
-    sensor_dx = Vec2(get_sensor_dist(LEFT_SENSOR) - prev_dists.x, get_sensor_dist(RIGHT_SENSOR)-prev_dists.y);
-  } 
-  prev_dists = Vec2(get_sensor_dist(LEFT_SENSOR), get_sensor_dist(RIGHT_SENSOR));
-
-
+    sensor_dx = Vec2(get_sensor_dist(LEFT_SENSOR) - prev_dists.x,
+                     get_sensor_dist(RIGHT_SENSOR) - prev_dists.y);
+  }
+  prev_dists =
+      Vec2(get_sensor_dist(LEFT_SENSOR), get_sensor_dist(RIGHT_SENSOR));
 
   if (s == MoveFwd) {
 
-
-    if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL && get_sensor_dist(LEFT_SENSOR) < THRESH_WALL && get_sensor_dist(FWD_SENSOR) > THRESH_WALL) {
-      if (sensor_dx.y > 0.0 || get_sensor_dist(LEFT_SENSOR) < THRESH_LOWER ) {
+    if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL &&
+        get_sensor_dist(LEFT_SENSOR) < THRESH_WALL &&
+        get_sensor_dist(FWD_SENSOR) > THRESH_WALL) {
+      if (sensor_dx.y > 0.0 || get_sensor_dist(LEFT_SENSOR) < THRESH_LOWER) {
         turn_heading(SLOW_TURN_RATE);
-      } else if (sensor_dx.y < 0.0 || get_sensor_dist(RIGHT_SENSOR) < THRESH_LOWER) {
+      } else if (sensor_dx.y < 0.0 ||
+                 get_sensor_dist(RIGHT_SENSOR) < THRESH_LOWER) {
         turn_heading(-SLOW_TURN_RATE);
       }
       move_forward_pos(FAST_SPEED);
-    // } else if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL) {
-    //   // received_key = false;
-    //   set_marker();
-    //   // exit_marker = prev_sensors;
-    //
-    //   s = RightTurn;
-    //   turn_stage = ToCenter;
-    //   turn = heading;
-    // } else if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL) {
-    //
-    //   // received_key = false;
-    //   set_marker();
-    //   s = LeftTurn;
-    //   turn_stage = ToCenter;
-    //   turn = heading;
+      // } else if (get_sensor_dist(RIGHT_SENSOR) > THRESH_WALL) {
+      //   // received_key = false;
+      //   set_marker();
+      //   // exit_marker = prev_sensors;
+      //
+      //   s = RightTurn;
+      //   turn_stage = ToCenter;
+      //   turn = heading;
+      // } else if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL) {
+      //
+      //   // received_key = false;
+      //   set_marker();
+      //   s = LeftTurn;
+      //   turn_stage = ToCenter;
+      //   turn = heading;
+      // received_key = false;
     } else {
-      //turn around
+      // turn around
       update_open_sensors();
-
 
       if (open_sensors.size() <= 0) {
         s = TurnAround;
         turn = heading;
-      }
-      else {
+      } else {
         int dir_pick = open_sensors[rand() % open_sensors.size()];
-          set_marker();
-          turn_stage = ToCenter;
-          turn = heading;
+        set_marker();
+        turn_stage = ToCenter;
+        turn = heading;
 
         // if (dir_pick == FWD_SENSOR) TODO: Implement FwdExit properly
-        if (dir_pick == LEFT_SENSOR) s = LeftTurn;
-        else if (dir_pick == RIGHT_SENSOR) s = RightTurn;
-
-
+        // dir_pick = next_dir;
+        if (dir_pick == FWD_SENSOR)
+          s = FwdExit;
+        if (dir_pick == LEFT_SENSOR)
+          s = LeftTurn;
+        else if (dir_pick == RIGHT_SENSOR)
+          s = RightTurn;
+        next_dir = -1;
       }
-
     }
   }
 
@@ -470,7 +489,8 @@ void loop() {
         hit_right_wall = true;
       }
 
-      if (normal_dist_travelled > THRESH_WALL / 2.5 || (hit_left_wall && hit_right_wall)) {
+      if (normal_dist_travelled > THRESH_WALL / 2.5 ||
+          (hit_left_wall && hit_right_wall)) {
         s = MoveFwd;
       } else {
         move_forward_pos(FAST_SPEED);
@@ -479,28 +499,45 @@ void loop() {
   }
 
   if (s == FwdExit && received_key) {
-    auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
-    auto window_uvec = window_vec.normalized();
-    window_uvec.rotate(M_PI_2);
-    auto delta_pos = pos.subbed(&exit_marker.left_p);
-
-    hit_left_wall = false;
-    hit_right_wall = false;
-
-    if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
-      hit_left_wall = true;
+    if (turn_stage == ToCenter) {
+      turn_stage = ExitTurn;
+      // auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
+      // auto window_uvec = window_vec.normalized();
+      // window_uvec.rotate(M_PI_2);
+      // auto delta_pos = pos.subbed(&exit_marker.left_p);
+      //
+      //
+      // double dist_straight = window_uvec.dot(&delta_pos);
+      //
+      // if (dist_straight > THRESH_WALL/5.0) {
+      //   turn_stage = ExitTurn;
+      // } else {
+      //   move_forward_pos(FAST_SPEED);
+      // }
     }
-    if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL) {
-      hit_right_wall = true;
-    }
+    if (turn_stage == ExitTurn) {
+      auto window_vec = exit_marker.left_p.subbed(&exit_marker.right_p);
+      auto window_uvec = window_vec.normalized();
+      window_uvec.rotate(M_PI_2);
+      auto delta_pos = pos.subbed(&exit_marker.left_p);
 
-    double dist_straight = window_uvec.dot(&delta_pos);
+      hit_left_wall = false;
+      hit_right_wall = false;
 
-    if (dist_straight > THRESH_WALL || (hit_left_wall && hit_right_wall)) {
-      s = MoveFwd;
-    } else {
+      if (get_sensor_dist(LEFT_SENSOR) < THRESH_WALL) {
+        hit_left_wall = true;
+      }
+      if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL) {
+        hit_right_wall = true;
+      }
 
-      move_forward_pos(FAST_SPEED);
+      double dist_straight = window_uvec.dot(&delta_pos);
+
+      if (abs(dist_straight) > FRONT_WALL_THRESH+3 || (hit_left_wall && hit_right_wall)) {
+        s = MoveFwd;
+      } else {
+        move_forward_pos(FAST_SPEED);
+      }
     }
   }
 
@@ -542,7 +579,8 @@ void loop() {
 
       double normal_dist_travelled = window_uvec.dot(&delta_pos);
 
-      if (normal_dist_travelled > THRESH_WALL / 2.5 || (hit_left_wall && hit_right_wall)) {
+      if (normal_dist_travelled > THRESH_WALL / 2.5 ||
+          (hit_left_wall && hit_right_wall)) {
         s = MoveFwd;
       } else {
         move_forward_pos(FAST_SPEED);
