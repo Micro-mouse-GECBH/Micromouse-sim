@@ -138,7 +138,7 @@ void add_sensor_point(Vec2 s_rel_pos, double s_heading, double dist) {
     int pt_size = points.size();
     auto points_new = std::vector<Vec2>();
 
-    for (int i = 99999; i < pt_size; i++) {
+    for (int i = 9999; i < pt_size; i++) {
       points_new.push_back(points[i]);
 
     }
