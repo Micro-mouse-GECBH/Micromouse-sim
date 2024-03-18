@@ -34,7 +34,7 @@ int main() {
 
 
   sim_v.dir = 0;
-  sim_v.pos = Vec2{300.0, 200.0};
+  sim_v.pos = Vec2{300.0, 220.0};
   sim_v.sensors = {Sensor{Vec2{10.0, 0.0/2.0}, 0.}};
   sim_v.sensors.push_back(Sensor{Vec2{-10.0, 0.0/2.0}, M_PI});
   sim_v.sensors.push_back(Sensor{Vec2{0.0, -35.0 / 2.0}, -M_PI_2});

@@ -1,5 +1,6 @@
 #pragma once
 #include "cell.h"
+#include <string>
 #pragma once
 #include "utils.h"
 #include <SFML/Graphics/RenderWindow.hpp>
@@ -42,8 +43,12 @@ struct Maze {
   }
 
   void generate_maze(Vec2 initial_cell) {
+    char* env_seed_val = std::getenv("MAZE_SEED");
+    int env_seed_num = std::stoi(env_seed_val);
 
-    srand(10435);
+
+
+    srand(env_seed_num);
     std::vector<Cell *> stack;
     std::vector<Cell *> route;
 

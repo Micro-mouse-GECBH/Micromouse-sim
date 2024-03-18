@@ -20,17 +20,17 @@
 
 #define THRESH_LOWER 10.0
 #define THRESH_UPPER 10.0
-#define THRESH_WALL 25.0
+#define THRESH_WALL 27.0
 
 #define FRONT_WALL_THRESH 45.0
 
-#define TURN_RATE 0.03
+#define TURN_RATE 0.13
 #define TURN_SPEED 1.0
 
-#define FAST_TURN_RATE 0.05
-#define SLOW_TURN_RATE 0.03
+#define FAST_TURN_RATE 0.1
+#define SLOW_TURN_RATE 0.02
 
-#define FAST_SPEED 2.5
+#define FAST_SPEED 7.5
 #define SLOW_SPEED 1.0
 
 int next_dir = -1;
@@ -223,7 +223,7 @@ void update_open_sensors() {
     open_sensors.push_back(RIGHT_SENSOR);
   if (get_sensor_dist(LEFT_SENSOR) > THRESH_WALL )
     open_sensors.push_back(LEFT_SENSOR);
-  if (get_sensor_dist(FWD_SENSOR) > FRONT_WALL_THRESH+10.0)
+  if (get_sensor_dist(FWD_SENSOR) > FRONT_WALL_THRESH)
     open_sensors.push_back(FWD_SENSOR);
 }
 
@@ -393,7 +393,7 @@ void loop() {
 
     if (get_sensor_dist(RIGHT_SENSOR) < THRESH_WALL &&
         get_sensor_dist(LEFT_SENSOR) < THRESH_WALL &&
-        get_sensor_dist(FWD_SENSOR) > THRESH_WALL) {
+        get_sensor_dist(FWD_SENSOR) > THRESH_LOWER) {
       if (sensor_dx.y > 0.0 || get_sensor_dist(LEFT_SENSOR) < THRESH_LOWER) {
         turn_heading(SLOW_TURN_RATE);
       } else if (sensor_dx.y < 0.0 ||
@@ -460,7 +460,7 @@ void loop() {
       auto fwd_vec = window_uvec.rotated(-M_PI_2);
 
       double fwd_dist = abs(fwd_vec.dot(&delta_pos));
-      if (fwd_dist > THRESH_WALL / 1.5) {
+      if (fwd_dist > THRESH_WALL / 1.5 || get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
         turn = heading;
         turn_stage = Turn;
       } else {
@@ -490,7 +490,7 @@ void loop() {
       }
 
       if (normal_dist_travelled > THRESH_WALL / 2.5 ||
-          (hit_left_wall && hit_right_wall)) {
+          (hit_left_wall && hit_right_wall) || get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
         s = MoveFwd;
       } else {
         move_forward_pos(FAST_SPEED);
@@ -533,7 +533,7 @@ void loop() {
 
       double dist_straight = window_uvec.dot(&delta_pos);
 
-      if (abs(dist_straight) > FRONT_WALL_THRESH+3 || (hit_left_wall && hit_right_wall)) {
+      if (abs(dist_straight) > FRONT_WALL_THRESH+3 || (hit_left_wall && hit_right_wall) || get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
         s = MoveFwd;
       } else {
         move_forward_pos(FAST_SPEED);
@@ -550,7 +550,7 @@ void loop() {
       auto fwd_vec = window_uvec.rotated(M_PI_2);
 
       double fwd_dist = abs(fwd_vec.dot(&delta_pos));
-      if (fwd_dist > THRESH_WALL / 1.5) {
+      if (fwd_dist > THRESH_WALL / 1.5 || get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
         turn = heading;
         turn_stage = Turn;
       } else {
@@ -580,7 +580,7 @@ void loop() {
       double normal_dist_travelled = window_uvec.dot(&delta_pos);
 
       if (normal_dist_travelled > THRESH_WALL / 2.5 ||
-          (hit_left_wall && hit_right_wall)) {
+          (hit_left_wall && hit_right_wall) || get_sensor_dist(FWD_SENSOR) < THRESH_LOWER) {
         s = MoveFwd;
       } else {
         move_forward_pos(FAST_SPEED);
