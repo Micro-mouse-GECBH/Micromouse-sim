@@ -28,9 +28,9 @@
 #define TURN_SPEED 1.0
 
 #define FAST_TURN_RATE 0.1
-#define SLOW_TURN_RATE 0.02
+#define SLOW_TURN_RATE 0.04
 
-#define FAST_SPEED 7.5
+#define FAST_SPEED 5.5
 #define SLOW_SPEED 1.0
 
 int next_dir = -1;
